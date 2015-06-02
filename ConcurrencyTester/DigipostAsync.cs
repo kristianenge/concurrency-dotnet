@@ -14,12 +14,10 @@ namespace ConcurrencyTester
 {
     internal class DigipostAsync
     {
-        private const string SenderId = "779052"; //"106768801";
+        private const string SenderId = "106768801"; //"779052"; 
+        //private static readonly string Thumbprint = "84e492a972b7edc197a32d9e9c94ea27bd5ac4d9".ToUpper();
+        private static readonly string Thumbprint = "f7 de 9c 38 4e e6 d0 a8 1d ad 7e 8e 60 bd 37 76 fa 5d e9 f4";
 
-        private static readonly ResourceUtility ResourceUtility =
-            new ResourceUtility("Digipost.Api.Client.Testklient.Resources");
-
-        private static readonly string Thumbprint = "84e492a972b7edc197a32d9e9c94ea27bd5ac4d9".ToUpper();
         private readonly object _syncLock = new object();
         private readonly int _defaultConnectionLimit;
         private readonly int _numberOfRequests;
@@ -37,7 +35,8 @@ namespace ConcurrencyTester
 
         public void TestAsync()
         {
-            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://api.digipost.no")};
+            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa.api.digipost.no")};
+            
 
             Logging.Initialize(config);
             var api = new DigipostClient(config, Thumbprint);
