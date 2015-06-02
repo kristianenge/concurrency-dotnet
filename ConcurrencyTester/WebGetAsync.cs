@@ -15,26 +15,29 @@ namespace ConcurrencyTester
     {
         private int _successfulCalls;
         private int _failedCalls;
-        private object _syncLock = new object();
-        private int _itemsLeft , NUMBER_OF_REQUESTS;
-        private int _defaultConnectionLimit;
+        private readonly object _syncLock = new object();
+        private int _itemsLeft;
+        private readonly int _numberOfRequests;
+        private readonly int _defaultConnectionLimit;
         
 
-        private Stopwatch stopwatch = Stopwatch.StartNew();
+        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
 
 
         public WebGetAsync(int numberOfRequests,int defaultConnectionLimit)
         {
             _defaultConnectionLimit = defaultConnectionLimit;
             _itemsLeft = numberOfRequests;
-            NUMBER_OF_REQUESTS = numberOfRequests;
+            _numberOfRequests = numberOfRequests;
         }
 
         private void DisplayTestResults()
         {
-            stopwatch.Stop();
-            
-            System.Console.WriteLine("Success:"+_successfulCalls+" , Failed:"+_failedCalls + ", Duration:"+stopwatch.ElapsedMilliseconds);
+            _stopwatch.Stop();
+
+
+            Console.WriteLine("Success:" + _successfulCalls + " , Failed:" + _failedCalls + ", Duration:" +
+                _stopwatch.ElapsedMilliseconds + " Avg:" + (_stopwatch.Elapsed.Seconds==0?_successfulCalls:(_successfulCalls / _stopwatch.Elapsed.Seconds)) + " req/sec");
         }
 
       
@@ -45,7 +48,7 @@ namespace ConcurrencyTester
             HttpClient httpClient = new HttpClient();
             
             
-            for (int i = 0; i < NUMBER_OF_REQUESTS; i++)
+            for (int i = 0; i < _numberOfRequests; i++)
             {
                 ProcessUrlAsync(httpClient);
             }

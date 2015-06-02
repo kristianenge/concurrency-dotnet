@@ -32,16 +32,20 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ApiClientShared">
+    <Reference Include="ApiClientShared, Version=1.0.5578.25965, Culture=neutral, PublicKeyToken=6e0e24e0c7886562, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\digipost-api-client.1.0.5630.26034\lib\net45\ApiClientShared.dll</HintPath>
     </Reference>
-    <Reference Include="Difi.Felles.Utility">
+    <Reference Include="Difi.Felles.Utility, Version=0.1.5598.25086, Culture=neutral, PublicKeyToken=bd8139acc70008cb, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\digipost-api-client.1.0.5630.26034\lib\net45\Difi.Felles.Utility.dll</HintPath>
     </Reference>
-    <Reference Include="Digipost.Api.Client">
+    <Reference Include="Digipost.Api.Client, Version=1.0.5630.26034, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\digipost-api-client.1.0.5630.26034\lib\net45\Digipost.Api.Client.dll</HintPath>
     </Reference>
-    <Reference Include="Digipost.Api.Client.Domain">
+    <Reference Include="Digipost.Api.Client.Domain, Version=1.0.5630.26034, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\digipost-api-client.1.0.5630.26034\lib\net45\Digipost.Api.Client.Domain.dll</HintPath>
     </Reference>
     <Reference Include="System" />

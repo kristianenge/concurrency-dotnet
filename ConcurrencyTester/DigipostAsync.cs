@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Threading;
-using ApiClientShared;
 using Digipost.Api.Client;
 using Digipost.Api.Client.Api;
 using Digipost.Api.Client.Domain;
@@ -14,9 +14,9 @@ namespace ConcurrencyTester
 {
     internal class DigipostAsync
     {
-        private const string SenderId = "106768801"; //"779052"; 
+        private const string SenderId = "106799002"; //"779052"; 
         //private static readonly string Thumbprint = "84e492a972b7edc197a32d9e9c94ea27bd5ac4d9".ToUpper();
-        private static readonly string Thumbprint = "f7 de 9c 38 4e e6 d0 a8 1d ad 7e 8e 60 bd 37 76 fa 5d e9 f4";
+        private static readonly string Thumbprint = "7d fc c9 8b 88 55 16 4d 03 a3 64 a4 90 98 26 9d 23 31 4d 0f";
 
         private readonly object _syncLock = new object();
         private readonly int _defaultConnectionLimit;
@@ -25,6 +25,7 @@ namespace ConcurrencyTester
         private int _failedCalls;
         private int _itemsLeft;
         private int _successfulCalls;
+        private long _sumActualSendTime;
 
         public DigipostAsync(int numberOfRequests, int defaultConnectionLimit)
         {
@@ -35,18 +36,16 @@ namespace ConcurrencyTester
 
         public void TestAsync()
         {
-            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa.api.digipost.no")};
+            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa2.api.digipost.no")};
             
-
-            Logging.Initialize(config);
             var api = new DigipostClient(config, Thumbprint);
-
 
             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
 
             for (var i = 0; i < _numberOfRequests; i++)
             {
                 SendMessageToPerson(api);
+                
             }
         }
 
@@ -55,33 +54,34 @@ namespace ConcurrencyTester
             _stopwatch.Stop();
 
             Console.WriteLine("Success:" + _successfulCalls + " , Failed:" + _failedCalls + ", Duration:" +
-                              _stopwatch.ElapsedMilliseconds);
+                _stopwatch.ElapsedMilliseconds + " Avg complete:" + (_stopwatch.Elapsed.Seconds == 0 ? _successfulCalls : (_successfulCalls / _stopwatch.Elapsed.Seconds)) + " req/sec, " + " avg sendAsync:" + (_sumActualSendTime == 0 ? _successfulCalls : (_successfulCalls / (_sumActualSendTime / 1000))) + " req/sec");
         }
 
-        private void SendMessageToPerson(DigipostClient api)
+        private async void SendMessageToPerson(DigipostClient api)
         {
-            Console.WriteLine("======================================");
-            Console.WriteLine("Sending message:");
-            Console.WriteLine("======================================");
+            var perRequestTotal = Stopwatch.StartNew();
+            
             var message = GetMessage();
+            var afterGetMessage = perRequestTotal.ElapsedMilliseconds;
+            var actualSendtime = Stopwatch.StartNew();
             try
             {
-                Console.WriteLine("> Starter å sende melding");
-                var messageDeliveryResult = api.SendMessage(message);
+                await api.SendMessageAsync(message);
                 Interlocked.Increment(ref _successfulCalls);
-                Logging.Log(TraceEventType.Information, "" + messageDeliveryResult);
-                WriteToConsoleWithColor("> Alt gikk fint!", false);
+                Interlocked.Add(ref _sumActualSendTime, actualSendtime.ElapsedMilliseconds);
+                WriteToConsoleWithColor("> Alt gikk fint! GetMessage MS:" + afterGetMessage + " Send Ms:" + (int)actualSendtime.ElapsedMilliseconds, false);
             }
             catch (ClientResponseException e)
             {
                 Interlocked.Increment(ref _failedCalls);
 
                 var errorMessage = e.Error;
-                WriteToConsoleWithColor("> Error." + errorMessage, true);
+                WriteToConsoleWithColor("> Error." + errorMessage + ", GetMessage MS:" + afterGetMessage + " Send Ms:" + (int)actualSendtime.ElapsedMilliseconds, true);
             }
             catch (Exception e)
             {
-                WriteToConsoleWithColor("> Oh snap... " + e.Message, true);
+                Interlocked.Increment(ref _failedCalls);
+                WriteToConsoleWithColor("> Oh snap... " + e.Message+ ", GetMessage MS:" +afterGetMessage + " Send Ms:" + (int)actualSendtime.ElapsedMilliseconds, true);
             }
             lock (_syncLock)
             {
@@ -93,18 +93,13 @@ namespace ConcurrencyTester
             }
         }
 
-        private static void IdentifyPerson(DigipostClient api)
+        private static async void IdentifyPerson(DigipostClient api)
         {
-            Console.WriteLine("======================================");
-            Console.WriteLine("Identifiserer person:");
-            Console.WriteLine("======================================");
-
             var identification = new Identification(IdentificationChoice.PersonalidentificationNumber, "31108446911");
 
             try
             {
-                var identificationResponse = api.Identify(identification);
-                Logging.Log(TraceEventType.Information, "Identification resp: \n" + identificationResponse);
+                await api.IdentifyAsync(identification);
                 WriteToConsoleWithColor("> Personen ble identifisert!", false);
             }
             catch (ClientResponseException e)
@@ -122,17 +117,17 @@ namespace ConcurrencyTester
         {
             //primary document
 
-            var primaryDocument = new Document(subject: "document subject", mimeType: "pdf", path: @"\\vmware-host\Shared Folders\Development\Hoveddokument.pdf");
+            var primaryDocument = new Document( "document subject","txt", File.ReadAllBytes(@"\\vmware-host\Shared Folders\Development\Hoveddokument.txt"));
             //attachment
-            var attachment = new Document("Attachment", "pdf", path: @"\\vmware-host\Shared Folders\Development\Vedlegg.pdf");
+            //var attachment = new Document("Attachment", "pdf", path: @"\\vmware-host\Shared Folders\Development\Vedlegg.pdf");
 
             //printdetails for fallback to print (physical mail)
-            var printDetails =
-                new PrintDetails(
-                    new PrintRecipient("Kristian Sæther Enge", new NorwegianAddress("0460", "Oslo", "Colletts gate 68")),
-                    new PrintReturnAddress("Kristian Sæther Enge",
-                        new NorwegianAddress("0460", "Oslo", "Colletts gate 68"))
-                    );
+            //var printDetails =
+            //    new PrintDetails(
+            //        new PrintRecipient("Kristian Sæther Enge", new NorwegianAddress("0460", "Oslo", "Colletts gate 68")),
+            //        new PrintReturnAddress("Kristian Sæther Enge",
+            //            new NorwegianAddress("0460", "Oslo", "Colletts gate 68"))
+            //        );
 
 
             //recipientIdentifier for digital mail
@@ -144,7 +139,7 @@ namespace ConcurrencyTester
 
             //message
             var message = new Message(digitalRecipientWithFallbackPrint, primaryDocument);
-            message.Attachments.Add(attachment);
+            //message.Attachments.Add(attachment);
 
             return message;
         }
