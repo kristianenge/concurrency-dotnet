@@ -1,30 +1,23 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net.Http;
 using System.Threading;
-using Digipost.Api.Client.Api;
+using System.Threading.Tasks;
 
 namespace ConcurrencyTester
 {
-    class WebGetAsync
+    internal class WebGetAsync
     {
-        private int _successfulCalls;
-        private int _failedCalls;
-        private readonly object _syncLock = new object();
-        private int _itemsLeft;
-        private readonly int _numberOfRequests;
         private readonly int _defaultConnectionLimit;
-        
-
+        private readonly int _numberOfRequests;
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+        private readonly object _syncLock = new object();
+        private int _failedCalls;
+        private int _itemsLeft;
+        private int _successfulCalls;
 
-
-        public WebGetAsync(int numberOfRequests,int defaultConnectionLimit)
+        public WebGetAsync(int numberOfRequests, int defaultConnectionLimit)
         {
             _defaultConnectionLimit = defaultConnectionLimit;
             _itemsLeft = numberOfRequests;
@@ -37,23 +30,34 @@ namespace ConcurrencyTester
 
 
             Console.WriteLine("Success:" + _successfulCalls + " , Failed:" + _failedCalls + ", Duration:" +
-                _stopwatch.ElapsedMilliseconds + " Avg:" + (_stopwatch.Elapsed.Seconds==0?_successfulCalls:(_successfulCalls / _stopwatch.Elapsed.Seconds)) + " req/sec");
+                              _stopwatch.ElapsedMilliseconds + " Avg:" +
+                              (_stopwatch.Elapsed.Seconds == 0
+                                  ? _successfulCalls
+                                  : (_successfulCalls/_stopwatch.Elapsed.Seconds)) + " req/sec");
         }
 
-      
-
-        public async void TestAsync( )
+        public void TestParallel()
         {
             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
-            HttpClient httpClient = new HttpClient();
-            
-            
-            for (int i = 0; i < _numberOfRequests; i++)
+            var httpClient = new HttpClient();
+
+            for (var i = 0; i < _numberOfRequests; i++)
+            {
+                Task.Run(() => { ProcessUrlAsync(httpClient); });
+            }
+        }
+
+        public void TestAsync()
+        {
+            ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
+            var httpClient = new HttpClient();
+
+
+            for (var i = 0; i < _numberOfRequests; i++)
             {
                 ProcessUrlAsync(httpClient);
             }
         }
-
 
         private async void ProcessUrlAsync(HttpClient httpClient)
         {
@@ -62,18 +66,18 @@ namespace ConcurrencyTester
             try
             {
                 //string URL = "http://vg.no";
-                string URL = "http://10.0.49.54:3000/";
-                System.Console.WriteLine("AsyncGet to "+URL);
-                Task<HttpResponseMessage> getTask = httpClient.GetAsync(URL);
+                const string url = "http://10.0.49.54:3000/";
+                //Console.WriteLine("AsyncGet to " + URL);
+                var getTask = httpClient.GetAsync(url);
                 httpResponse = await getTask;
 
                 Interlocked.Increment(ref _successfulCalls);
-                System.Console.WriteLine("Success");
+                //Console.WriteLine("Success");
             }
             catch (Exception ex)
             {
                 Interlocked.Increment(ref _failedCalls);
-                System.Console.WriteLine("Failed");
+                //Console.WriteLine("Failed");
             }
             finally
             {
@@ -86,11 +90,9 @@ namespace ConcurrencyTester
                 _itemsLeft--;
                 if (_itemsLeft == 0)
                 {
-                    
-                    this.DisplayTestResults();
+                    DisplayTestResults();
                 }
             }
         }
     }
-
 }

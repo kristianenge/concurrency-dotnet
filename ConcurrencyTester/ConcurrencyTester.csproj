@@ -61,6 +61,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DigipostAsync.cs" />
+    <Compile Include="DigipostParalell.cs" />
+    <Compile Include="ProcessingType.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="WebGetAsync.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

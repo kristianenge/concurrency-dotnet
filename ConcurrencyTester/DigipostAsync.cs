@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 using Digipost.Api.Client;
 using Digipost.Api.Client.Api;
 using Digipost.Api.Client.Domain;
@@ -34,6 +35,18 @@ namespace ConcurrencyTester
             _defaultConnectionLimit = defaultConnectionLimit;
         }
 
+        public void TestParallel()
+        {
+            var config = new ClientConfig(SenderId) { ApiUrl = new Uri("https://qa2.api.digipost.no") };
+            var api = new DigipostClient(config, Thumbprint);
+            ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
+
+            for (var i = 0; i < _numberOfRequests; i++)
+            {
+                Task.Run(() => { SendMessageToPerson(api); });
+            }
+        }
+
         public void TestAsync()
         {
             var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa2.api.digipost.no")};
@@ -54,7 +67,7 @@ namespace ConcurrencyTester
             _stopwatch.Stop();
 
             Console.WriteLine("Success:" + _successfulCalls + " , Failed:" + _failedCalls + ", Duration:" +
-                _stopwatch.ElapsedMilliseconds + " Avg complete:" + (_stopwatch.Elapsed.Seconds == 0 ? _successfulCalls : (_successfulCalls / _stopwatch.Elapsed.Seconds)) + " req/sec, " + " avg sendAsync:" + (_sumActualSendTime == 0 ? _successfulCalls : (_successfulCalls / (_sumActualSendTime / 1000))) + " req/sec");
+                _stopwatch.ElapsedMilliseconds + " Avg complete:" + (_stopwatch.Elapsed.Seconds == 0 ? _successfulCalls : (_successfulCalls / _stopwatch.Elapsed.Seconds)) + " req/sec, " + " avg sendAsync:" + ((_sumActualSendTime/1000) == 0 ? _successfulCalls : (_successfulCalls / (_sumActualSendTime / 1000))) + " req/sec");
         }
 
         private async void SendMessageToPerson(DigipostClient api)
