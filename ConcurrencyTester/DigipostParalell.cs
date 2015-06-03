@@ -1,9 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Resources;
 using System.Threading;
 using System.Threading.Tasks;
+using ApiClientShared;
 using Digipost.Api.Client;
 using Digipost.Api.Client.Api;
 using Digipost.Api.Client.Domain;
@@ -24,61 +28,124 @@ namespace ConcurrencyTester
         private int _failedCalls;
         private object _syncLock = new object();
         private DateTime _utcEndTime;
+        private ResourceUtility _resourceManager;
+        private long _sumActualSendTime;
 
         public DigipostParalell(int numberOfRequests, int defaultConnectionLimit)
         {
+            _resourceManager = new ResourceUtility("ConcurrencyTester.Resources");
             _itemsLeft = numberOfRequests;
             _numberOfRequests = numberOfRequests;
             _defaultConnectionLimit = defaultConnectionLimit;
         }
 
+        private void DisplayTestResults()
+        {
+            _stopwatch.Stop();
+
+            double performanceAllWork = _successfulCalls / (_stopwatch.ElapsedMilliseconds / 1000d);
+
+            Console.WriteLine(
+                "Success:" + _successfulCalls + ", " +
+                "Failed:" + _failedCalls + ", " +
+                "Duration:" + _stopwatch.ElapsedMilliseconds + ", " +
+                "Performance full run:" + performanceAllWork.ToString("#.###") + " req/sec, " );
+        }
+
         public void TestParallel()
         {
-            
+
             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
-            var config = new ClientConfig(SenderId) { ApiUrl = new Uri("https://qa2.api.digipost.no") };
+            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa2.api.digipost.no")};
             var api = new DigipostClient(config, Thumbprint);
+
+            
+                List<Message> messages = new List<Message>();
+                for (var i = 0; i < _numberOfRequests; i++)
+                {
+                    messages.Add(GetMessage());
+                }
+
+            {
+                for (var i = 0; i < _numberOfRequests; i++)
+                {
+                    var i1 = i;
+                    Task.Run(() =>
+                    {
+
+                        try
+                        {
+                            //PerformWebRequestGet();
+                            SendMessageToPerson(api, messages.ElementAt(i1));
+                            Interlocked.Increment(ref _successfulCalls);
+                        }
+                        catch (Exception ex)
+                        {
+                            Interlocked.Increment(ref _failedCalls);
+                        }
+
+                        lock (_syncLock)
+                        {
+                            _itemsLeft--;
+                            _utcEndTime = DateTime.UtcNow;
+                            Console.WriteLine("fin: " + _utcEndTime);
+                            if (_itemsLeft != 0) return;
+                            _utcEndTime = DateTime.UtcNow;
+                            DisplayTestResults();
+
+                        }
+                    });
+                }
+            }
+        }
+
+        public void AleksanderParallel()
+        {
+            Console.WriteLine("Starter aleksanderparallell");
+             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
+            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa2.api.digipost.no")};
+            var digipostClient = new DigipostClient(config, Thumbprint);
+
+            List<Message> messages = new List<Message>();
             for (var i = 0; i < _numberOfRequests; i++)
             {
-                Task.Run(() =>
-                {
-
-                    try
-                    {
-                        //PerformWebRequestGet();
-                        SendMessageToPerson(api);
-                        Interlocked.Increment(ref _successfulCalls);
-                    }
-                    catch (Exception ex)
-                    {
-                        Interlocked.Increment(ref _failedCalls);
-                    }
-
-                    lock (_syncLock)
-                    {
-                        _itemsLeft--;
-                        _utcEndTime = DateTime.UtcNow;
-                        Console.WriteLine("fin: "+_utcEndTime);
-                        if (_itemsLeft != 0) return;
-                        _utcEndTime = DateTime.UtcNow;
-                        Console.WriteLine("avg:" + (_successfulCalls / _stopwatch.Elapsed.Seconds));
-       
-                    }
-                });
+                messages.Add(GetMessage());
             }
+
+
+            ParallelOptions options = new ParallelOptions();
+            options.MaxDegreeOfParallelism = _defaultConnectionLimit;
+
+            Parallel.ForEach(messages, message => AleksanderParallelHelper(digipostClient,message));
+            Console.WriteLine("Ferdig med aleksanderparallell:"+(_numberOfRequests/(_sumActualSendTime/1000d)+" req/sec"));
+        }
+
+        private void AleksanderParallelHelper(DigipostClient client, Message message)
+        {
+            var actualSendtime = Stopwatch.StartNew();
+            Thread.Sleep(200);
+            //client.SendMessage(message);
+            Interlocked.Add(ref _sumActualSendTime, actualSendtime.ElapsedMilliseconds);
+            Console.WriteLine("Sendte en aleksandermelding:"+actualSendtime.ElapsedMilliseconds+" ms");
+            actualSendtime.Stop();
         }
 
         private void PerformWebRequestGet()
         {
+            var actualSendtime = Stopwatch.StartNew();
             HttpWebRequest request = null;
             HttpWebResponse response = null;
 
             try
             {
-                request = (HttpWebRequest)WebRequest.Create("http://10.0.49.54:3000/");
+                request = (HttpWebRequest)WebRequest.Create("http://10.16.0.125:3000/");
                 request.Method = "GET";
                 request.KeepAlive = true;
                 response = (HttpWebResponse)request.GetResponse();
+                Interlocked.Add(ref _sumActualSendTime, actualSendtime.ElapsedMilliseconds);
+                Console.WriteLine("Sendte en aleksandermelding:" + actualSendtime.ElapsedMilliseconds + " ms");
+                actualSendtime.Stop();
+                
             }
             finally
             {
@@ -88,11 +155,11 @@ namespace ConcurrencyTester
 
        
 
-        private void SendMessageToPerson(DigipostClient api)
+        private void SendMessageToPerson(DigipostClient api,Message message)
         {
-            var message = GetMessage();
+            //var message = GetMessage();
             
-            api.SendMessageAsync(message);
+            api.SendMessage(message);
          
         }
 
@@ -101,7 +168,7 @@ namespace ConcurrencyTester
         {
             //primary document
 
-            var primaryDocument = new Document( "document subject","txt", File.ReadAllBytes(@"\\vmware-host\Shared Folders\Development\Hoveddokument.txt"));
+            var primaryDocument = new Document( "document subject","txt", _resourceManager.ReadAllBytes(true, "Hoveddokument.txt"));
         
             //recipientIdentifier for digital mail
             var recipientByNameAndAddress = new RecipientByNameAndAddress("Kristian Sæther Enge", "0460",

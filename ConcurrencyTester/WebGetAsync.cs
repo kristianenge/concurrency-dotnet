@@ -66,7 +66,7 @@ namespace ConcurrencyTester
             try
             {
                 //string URL = "http://vg.no";
-                const string url = "http://10.0.49.54:3000/";
+                const string url = "http://10.16.0.125:3000/";
                 //Console.WriteLine("AsyncGet to " + URL);
                 var getTask = httpClient.GetAsync(url);
                 httpResponse = await getTask;

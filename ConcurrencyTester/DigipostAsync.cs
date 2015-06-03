@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using ApiClientShared;
 using Digipost.Api.Client;
 using Digipost.Api.Client.Api;
 using Digipost.Api.Client.Domain;
@@ -27,32 +28,20 @@ namespace ConcurrencyTester
         private int _itemsLeft;
         private int _successfulCalls;
         private long _sumActualSendTime;
+        private ResourceUtility _resourceManager;
 
         public DigipostAsync(int numberOfRequests, int defaultConnectionLimit)
         {
+            _resourceManager = new ResourceUtility("ConcurrencyTester.Resources");
             _itemsLeft = numberOfRequests;
             _numberOfRequests = numberOfRequests;
             _defaultConnectionLimit = defaultConnectionLimit;
         }
 
-        public void TestParallel()
-        {
-            var config = new ClientConfig(SenderId) { ApiUrl = new Uri("https://qa2.api.digipost.no") };
-            var api = new DigipostClient(config, Thumbprint);
-            ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
-
-            for (var i = 0; i < _numberOfRequests; i++)
-            {
-                Task.Run(() => { SendMessageToPerson(api); });
-            }
-        }
-
         public void TestAsync()
         {
             var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa2.api.digipost.no")};
-            
             var api = new DigipostClient(config, Thumbprint);
-
             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
 
             for (var i = 0; i < _numberOfRequests; i++)
@@ -66,17 +55,25 @@ namespace ConcurrencyTester
         {
             _stopwatch.Stop();
 
-            Console.WriteLine("Success:" + _successfulCalls + " , Failed:" + _failedCalls + ", Duration:" +
-                _stopwatch.ElapsedMilliseconds + " Avg complete:" + (_stopwatch.Elapsed.Seconds == 0 ? _successfulCalls : (_successfulCalls / _stopwatch.Elapsed.Seconds)) + " req/sec, " + " avg sendAsync:" + ((_sumActualSendTime/1000) == 0 ? _successfulCalls : (_successfulCalls / (_sumActualSendTime / 1000))) + " req/sec");
+            double performanceAllWork = _successfulCalls / (_stopwatch.ElapsedMilliseconds/1000d);
+            double performanceRequests = _successfulCalls/(_sumActualSendTime/1000d);
+
+            Console.WriteLine(
+                "Success:" + _successfulCalls + ", " +
+                "Failed:" + _failedCalls + ", " +
+                "Duration:" + _stopwatch.ElapsedMilliseconds + ", " +
+                "Performance full run:" + performanceAllWork.ToString("#.###") + " req/sec, " + " Performance request:" + performanceRequests.ToString("#.###") + " req/sec");
         }
 
         private async void SendMessageToPerson(DigipostClient api)
         {
+            Console.WriteLine("Sending to person");
             var perRequestTotal = Stopwatch.StartNew();
             
             var message = GetMessage();
             var afterGetMessage = perRequestTotal.ElapsedMilliseconds;
             var actualSendtime = Stopwatch.StartNew();
+            
             try
             {
                 await api.SendMessageAsync(message);
@@ -87,7 +84,6 @@ namespace ConcurrencyTester
             catch (ClientResponseException e)
             {
                 Interlocked.Increment(ref _failedCalls);
-
                 var errorMessage = e.Error;
                 WriteToConsoleWithColor("> Error." + errorMessage + ", GetMessage MS:" + afterGetMessage + " Send Ms:" + (int)actualSendtime.ElapsedMilliseconds, true);
             }
@@ -126,11 +122,11 @@ namespace ConcurrencyTester
             }
         }
 
-        private static Message GetMessage()
+        private Message GetMessage()
         {
             //primary document
 
-            var primaryDocument = new Document( "document subject","txt", File.ReadAllBytes(@"\\vmware-host\Shared Folders\Development\Hoveddokument.txt"));
+            var primaryDocument = new Document( "document subject","txt", _resourceManager.ReadAllBytes(true,"Hoveddokument.txt"));
             //attachment
             //var attachment = new Document("Attachment", "pdf", path: @"\\vmware-host\Shared Folders\Development\Vedlegg.pdf");
 
