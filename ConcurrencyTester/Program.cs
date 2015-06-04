@@ -1,4 +1,5 @@
 ﻿using System;
+using ConcurrencyTester.Enums;
 using Digipost.Api.Client;
 
 namespace ConcurrencyTester
@@ -13,14 +14,13 @@ namespace ConcurrencyTester
         private static int numberOfRequests = 100;
         private static int threadsActive = 4;
 
-        const ProcessingType processingType = ProcessingType.Paralell;
+        private const ProcessingType processingType = ProcessingType.Async;
+        private const RequestType requestType = RequestType.Identify;
 
         public static void Main()
         {
             Console.WriteLine("Starting program ...");
-            
             Digipost(numberOfRequests, threadsActive, processingType);
-
             Console.ReadKey();
         }
 
@@ -32,29 +32,13 @@ namespace ConcurrencyTester
             
             switch (processingType)
             {
-                case ProcessingType.Paralell:
-                    new DigipostParalell(numberOfRequests,connectionLimit, degreeOfParallelism, clientConfig, thumbprint).Run();
+                case ProcessingType.Parallel:
+                    new DigipostParalell(numberOfRequests,connectionLimit, degreeOfParallelism, clientConfig, thumbprint).Run(requestType);
                     break;
                 case ProcessingType.Async:
-                    new DigipostAsync(numberOfRequests, connectionLimit, clientConfig, thumbprint).Run();
+                    new DigipostAsync(numberOfRequests, connectionLimit, clientConfig, thumbprint).Run(requestType);
                     break;
             }
         }
-        
-        private static void webServer(int numberOfRequests, int connectionPool, ProcessingType processingType)
-        {
-            var wa = new WebGetAsync(numberOfRequests, connectionPool);
-            switch (processingType)
-            {
-                case ProcessingType.Paralell:
-                    wa.TestParallel();
-                    break;
-                case ProcessingType.Async:
-                    wa.TestAsync();
-                    break;
-            }
-        }
-
-        
     }
 }

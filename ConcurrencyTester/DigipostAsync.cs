@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Net;
-using ApiClientShared;
+using ConcurrencyTester.Enums;
 using Digipost.Api.Client;
-using Digipost.Api.Client.Api;
-using Digipost.Api.Client.Domain;
-using Digipost.Api.Client.Domain.Enums;
-using Digipost.Api.Client.Domain.Exceptions;
 
 namespace ConcurrencyTester
 {
@@ -20,45 +16,18 @@ namespace ConcurrencyTester
             _defaultConnectionLimit = defaultConnectionLimit;
         }
 
-        public override void Run()
+        public override void Run(RequestType requestType)
         {
             Stopwatch.Start();
             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
 
             while(RunsLeft() > 0)
             {
-                SendMessageToPerson(Client);
+                Send(Client, requestType);
             }
 
             Stopwatch.Stop();
             DisplayTestResults();
-        }
-
-        private static async void IdentifyPerson(DigipostClient api)
-        {
-            var identification = new Identification(IdentificationChoice.PersonalidentificationNumber, "31108446911");
-
-            try
-            {
-                await api.IdentifyAsync(identification);
-                WriteToConsoleWithColor("> Personen ble identifisert!", false);
-            }
-            catch (ClientResponseException e)
-            {
-                var errorMessage = e.Error;
-                WriteToConsoleWithColor("> Feilet." + errorMessage, true);
-            }
-            catch (Exception e)
-            {
-                WriteToConsoleWithColor("> Oh snap... " + e.Message, true);
-            }
-        }
-
-        private static void WriteToConsoleWithColor(string message, bool isError = false)
-        {
-            Console.ForegroundColor = isError ? ConsoleColor.Red : ConsoleColor.Green;
-            Console.WriteLine(message);
-            Console.ResetColor();
         }
     }
 }

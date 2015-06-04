@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Net;
-using System.Resources;
-using System.Threading;
 using System.Threading.Tasks;
-using ApiClientShared;
+using ConcurrencyTester.Enums;
 using Digipost.Api.Client;
-using Digipost.Api.Client.Api;
 using Digipost.Api.Client.Domain;
 
 namespace ConcurrencyTester
@@ -26,12 +19,12 @@ namespace ConcurrencyTester
             _defaultConnectionLimit = defaultConnectionLimit;
             _degreeOfParallelism = degreeOfParallelism;
         }
-        
-        public override void Run()
+
+        public override void Run(RequestType requestType)
         {
             Stopwatch.Start();
             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
-            
+
             List<Message> messages = new List<Message>();
             while (RunsLeft() > 0)
             {
@@ -39,26 +32,10 @@ namespace ConcurrencyTester
             }
 
             var options = new ParallelOptions {MaxDegreeOfParallelism = _degreeOfParallelism};
-            Parallel.ForEach(messages, options, (message) => AleksanderParallelHelper());
-            
+            Parallel.ForEach(messages, options, (message) => Send(Client,requestType));
+
             Stopwatch.Stop();
             DisplayTestResults();
-        }
-
-        private void AleksanderParallelHelper()
-        {
-            try
-            {
-                SendMessageToPerson(Client);
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine("Exception:" + e.Message + "InnerEx:" + e.InnerException.Message);
-            }
-            finally
-            {
-                Console.Write(".");
-            }
         }
     }
 }

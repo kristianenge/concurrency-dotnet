@@ -4,9 +4,11 @@ using System.Resources;
 using System.Security.Cryptography;
 using System.Threading;
 using ApiClientShared;
+using ConcurrencyTester.Enums;
 using Digipost.Api.Client;
 using Digipost.Api.Client.Api;
 using Digipost.Api.Client.Domain;
+using Digipost.Api.Client.Domain.Enums;
 using Digipost.Api.Client.Domain.Exceptions;
 
 namespace ConcurrencyTester
@@ -20,6 +22,7 @@ namespace ConcurrencyTester
         private int _itemsLeft;
         private byte[] _documentBytes;
         private Message _message;
+        private Identification _identification;
 
         protected DigipostRunner(ClientConfig clientConfig, string thumbprint, int numOfRuns)
         {
@@ -36,7 +39,7 @@ namespace ConcurrencyTester
            return Interlocked.Decrement(ref _itemsLeft);
         }
 
-        public abstract void Run();
+        public abstract void Run(RequestType requestType);
 
         public DigipostClient Client
         {
@@ -62,6 +65,17 @@ namespace ConcurrencyTester
             return _message;
         }
 
+        public Identification GetIdentification()
+        {
+            lock (_lock)
+            {
+                if(_identification != null) return _identification;
+                _identification = new Identification(IdentificationChoice.PersonalidentificationNumber, "31108446911");
+            }
+
+            return _identification;
+        }
+
         private byte[] GetDocumentBytes()
         {
             return _documentBytes 
@@ -69,25 +83,30 @@ namespace ConcurrencyTester
             
         }
 
-        private readonly object _syncLock = new object();
-        public async void SendMessageToPerson(DigipostClient api)
+        public async void Send(DigipostClient digipostClient, RequestType requestType)
         {
-            var message = GetMessage();
-
             try
             {
-                await api.SendMessageAsync(message);
+                switch (requestType)
+                {
+                    case RequestType.Message:
+                        await digipostClient.SendMessageAsync(GetMessage());
+                        break;
+                    case RequestType.Identify:
+                        await digipostClient.IdentifyAsync(GetIdentification());
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException("requestType", requestType, null);
+                }
+                
                 Interlocked.Increment(ref _successfulCalls);
 
-            }
-            catch (ClientResponseException e)
-            {
-                Interlocked.Increment(ref _failedCalls);
-                var errorMessage = e.Error;
             }
             catch (Exception e)
             {
                 Interlocked.Increment(ref _failedCalls);
+                Console.WriteLine("Request failed. Are you connected to VPN? Reason{0}. Inner: {1}", e.Message, e.InnerException.Message);
+                Console.WriteLine(e.InnerException.InnerException);
             }
 
             Console.Write(".");
