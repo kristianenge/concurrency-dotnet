@@ -51,83 +51,56 @@ namespace ConcurrencyTester
                 "Duration:" + _stopwatch.ElapsedMilliseconds + ", " +
                 "Performance full run:" + performanceAllWork.ToString("#.###") + " req/sec, " );
         }
-
-        public void TestParallel()
-        {
-
-            ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
-            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa2.api.digipost.no")};
-            var api = new DigipostClient(config, Thumbprint);
-
-            
-                List<Message> messages = new List<Message>();
-                for (var i = 0; i < _numberOfRequests; i++)
-                {
-                    messages.Add(GetMessage());
-                }
-
-            {
-                for (var i = 0; i < _numberOfRequests; i++)
-                {
-                    var i1 = i;
-                    Task.Run(() =>
-                    {
-
-                        try
-                        {
-                            //PerformWebRequestGet();
-                            SendMessageToPerson(api, messages.ElementAt(i1));
-                            Interlocked.Increment(ref _successfulCalls);
-                        }
-                        catch (Exception ex)
-                        {
-                            Interlocked.Increment(ref _failedCalls);
-                        }
-
-                        lock (_syncLock)
-                        {
-                            _itemsLeft--;
-                            _utcEndTime = DateTime.UtcNow;
-                            Console.WriteLine("fin: " + _utcEndTime);
-                            if (_itemsLeft != 0) return;
-                            _utcEndTime = DateTime.UtcNow;
-                            DisplayTestResults();
-
-                        }
-                    });
-                }
-            }
-        }
-
+        
         public void AleksanderParallel()
         {
-            Console.WriteLine("Starter aleksanderparallell");
-             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
-            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa2.api.digipost.no")};
-            var digipostClient = new DigipostClient(config, Thumbprint);
+            var startTime = DateTime.Now;
+            Console.WriteLine("Starter aleksanderparallell" + startTime);
 
+            ServicePointManager.DefaultConnectionLimit = 4;
+            
             List<Message> messages = new List<Message>();
             for (var i = 0; i < _numberOfRequests; i++)
             {
                 messages.Add(GetMessage());
             }
 
-
+            var config = new ClientConfig(SenderId) { ApiUrl = new Uri("https://qa2.api.digipost.no") };
+            var digipostClient = new DigipostClient(config, Thumbprint);
+           
             ParallelOptions options = new ParallelOptions();
             options.MaxDegreeOfParallelism = _defaultConnectionLimit;
 
-            Parallel.ForEach(messages, message => AleksanderParallelHelper(digipostClient,message));
-            Console.WriteLine("Ferdig med aleksanderparallell:"+(_numberOfRequests/(_sumActualSendTime/1000d)+" req/sec"));
+            Parallel.ForEach(messages, options, (message) => AleksanderParallelHelper(digipostClient,message));
+            var endTime = DateTime.Now;
+            Console.WriteLine("Starter aleksanderparallell" + endTime);
+            var totalTime = (endTime - startTime);
+            Console.WriteLine("Diff:" + totalTime);
+
+            Console.WriteLine("Ferdig med aleksanderparallell:"+(_numberOfRequests/(totalTime.TotalMilliseconds/1000d)+" req/sec"));
         }
 
-        private void AleksanderParallelHelper(DigipostClient client, Message message)
+        private void AleksanderParallelHelper(DigipostClient digipostClient, Message message)
         {
             var actualSendtime = Stopwatch.StartNew();
-            Thread.Sleep(200);
-            //client.SendMessage(message);
-            Interlocked.Add(ref _sumActualSendTime, actualSendtime.ElapsedMilliseconds);
-            Console.WriteLine("Sendte en aleksandermelding:"+actualSendtime.ElapsedMilliseconds+" ms");
-            actualSendtime.Stop();
+            try
+            {
+                var requestResult = digipostClient.SendMessage(message);
+                ;
+                //Console.WriteLine("Sendte en aleksandermelding:" + actualSendtime.ElapsedMilliseconds + " ms");
+
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("Exception:" + e.Message + "InnerEx:" + e.InnerException.Message);
+            }
+            finally
+            {
+                Interlocked.Add(ref _sumActualSendTime, actualSendtime.ElapsedMilliseconds);
+                actualSendtime.Stop();
+                Console.Write(".");
+            }
+            
         }
 
         private void PerformWebRequestGet()

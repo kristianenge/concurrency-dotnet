@@ -9,18 +9,18 @@ namespace ConcurrencyTester
         
         public static void Main()
         {
-            var numberOfRequests = 1000;
-            var connectionPool = 2;
-            var processingType = ProcessingType.Paralell;
+            var numberOfRequests = 100;
+            var threadsActive = 4;
+            var processingType = ProcessingType.Async;
 
             Console.WriteLine("Starting program ...");
             //webServer(numberOfRequests, connectionPool, processingType);
-            digipost(numberOfRequests, connectionPool, processingType);
+            Digipost(numberOfRequests, threadsActive, processingType);
 
             Console.ReadKey();
         }
 
-        private static void digipost(int numberOfRequests, int connectionPool, ProcessingType processingType)
+        private static void Digipost(int numberOfRequests, int connectionPool, ProcessingType processingType)
         {
             Console.WriteLine("Starting to send digipost: {0}, with requests: {1}, poolcount: {2}", processingType, numberOfRequests, connectionPool);
             
