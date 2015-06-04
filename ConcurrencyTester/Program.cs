@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Configuration;
+using System.Diagnostics;
+using System.Threading;
 using Digipost.Api.Client;
 
 namespace ConcurrencyTester
@@ -16,8 +18,8 @@ namespace ConcurrencyTester
             var numberOfRequests = 100;
             var threadsActive = 4;
             var processingType = ProcessingType.Async;
-
-
+            
+            
             Console.WriteLine("Starting program ...");
             //webServer(numberOfRequests, connectionPool, processingType);
             Digipost(numberOfRequests, threadsActive, processingType);
@@ -41,7 +43,7 @@ namespace ConcurrencyTester
                     break;
             }
         }
-
+        
         private static void webServer(int numberOfRequests, int connectionPool, ProcessingType processingType)
         {
             var wa = new WebGetAsync(numberOfRequests, connectionPool);
