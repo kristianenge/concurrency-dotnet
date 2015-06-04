@@ -13,27 +13,27 @@ namespace ConcurrencyTester
 {
     abstract class DigipostRunner
     {
-
         private readonly Lazy<DigipostClient> _client;
-        public Stopwatch Stopwatch;
-        private ResourceUtility _resourceManager;
-
+        private readonly ResourceUtility _resourceManager;
         private int _failedCalls;
         private int _successfulCalls;
         private int _itemsLeft;
-
+        private byte[] _documentBytes;
+        private Message _message;
 
         protected DigipostRunner(ClientConfig clientConfig, string thumbprint, int numOfRuns)
         {
             _client = new Lazy<DigipostClient>(() => new DigipostClient(clientConfig, thumbprint));
             _resourceManager = new ResourceUtility("ConcurrencyTester.Resources");
             Stopwatch = new Stopwatch();
-            _itemsLeft = numOfRuns;
+            _itemsLeft = numOfRuns + 1; //Fordi vi decrementer teller før return
         }
+
+        public Stopwatch Stopwatch;
 
         public int RunsLeft()
         {
-            return Interlocked.Decrement(ref _itemsLeft);
+           return Interlocked.Decrement(ref _itemsLeft);
         }
 
         public abstract void Run();
@@ -43,7 +43,6 @@ namespace ConcurrencyTester
             get { return _client.Value; }
         }
 
-        private Message _message;
         private readonly Object _lock = new Object();
 
         public Message GetMessage()
@@ -63,7 +62,6 @@ namespace ConcurrencyTester
             return _message;
         }
 
-        private byte[] _documentBytes;
         private byte[] GetDocumentBytes()
         {
             return _documentBytes 
@@ -99,10 +97,11 @@ namespace ConcurrencyTester
         {
             var performanceAllWork = _successfulCalls / (Stopwatch.ElapsedMilliseconds / 1000d);
 
+            Console.WriteLine();
             Console.WriteLine(
-                "Success:" + _successfulCalls + ", " +
-                "Failed:" + _failedCalls + ", " +
-                "Duration:" + Stopwatch.ElapsedMilliseconds + ", " +
+                "Success:" + _successfulCalls + ", \n" +
+                "Failed:" + _failedCalls + " \n" +
+                "Duration:" + Stopwatch.ElapsedMilliseconds + " \n" +
                 "Performance full run:" + performanceAllWork.ToString("#.###") + " req/sec");
         }
     }

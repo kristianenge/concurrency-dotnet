@@ -13,17 +13,10 @@ namespace ConcurrencyTester
     {
         
         private readonly int _defaultConnectionLimit;
-        private readonly int _numberOfRequests;
         
-        private long _sumActualSendTime;
-        private ResourceUtility _resourceManager;
-
         public DigipostAsync(int numberOfRequests, int defaultConnectionLimit, ClientConfig clientconfig, string thumbprint) : 
             base(clientconfig, thumbprint, numberOfRequests)
         {
-            _resourceManager = new ResourceUtility("ConcurrencyTester.Resources");
-            
-            _numberOfRequests = numberOfRequests;
             _defaultConnectionLimit = defaultConnectionLimit;
         }
 
