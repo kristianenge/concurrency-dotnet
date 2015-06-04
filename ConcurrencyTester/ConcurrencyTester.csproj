@@ -34,7 +34,7 @@
   <ItemGroup>
     <Reference Include="ApiClientShared, Version=1.0.5578.25965, Culture=neutral, PublicKeyToken=6e0e24e0c7886562, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\digipost-api-client.1.0.5630.26034\lib\net45\ApiClientShared.dll</HintPath>
+      <HintPath>..\packages\api-client-shared.1.0.5578.25965\lib\net45\ApiClientShared.dll</HintPath>
     </Reference>
     <Reference Include="Difi.Felles.Utility, Version=0.1.5598.25086, Culture=neutral, PublicKeyToken=bd8139acc70008cb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -62,7 +62,9 @@
   <ItemGroup>
     <Compile Include="DigipostAsync.cs" />
     <Compile Include="DigipostParalell.cs" />
-    <Compile Include="ProcessingType.cs" />
+    <Compile Include="DigipostRunner.cs" />
+    <Compile Include="Enums\ProcessingType.cs" />
+    <Compile Include="Enums\RequestType.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="WebGetAsync.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -70,6 +72,10 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Hoveddokument.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
