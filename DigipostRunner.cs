@@ -1,8 +1,16 @@
 ﻿using System;
 
-public class Class1
+public abstract class DigipostRunner
 {
-	public Class1()
+	public DigipostRunner()
 	{
+
+        public abstract void Run;
+
+        
+	    
+
+
+
 	}
 }

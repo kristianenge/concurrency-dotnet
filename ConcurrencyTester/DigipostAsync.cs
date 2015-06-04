@@ -14,12 +14,9 @@ using Digipost.Api.Client.Domain.Print;
 
 namespace ConcurrencyTester
 {
-    internal class DigipostAsync
+    internal class DigipostAsync : DigipostRunner
     {
-        private const string SenderId = "106799002"; //"779052"; 
-        //private static readonly string Thumbprint = "84e492a972b7edc197a32d9e9c94ea27bd5ac4d9".ToUpper();
-        private static readonly string Thumbprint = "7d fc c9 8b 88 55 16 4d 03 a3 64 a4 90 98 26 9d 23 31 4d 0f";
-
+        
         private readonly object _syncLock = new object();
         private readonly int _defaultConnectionLimit;
         private readonly int _numberOfRequests;
@@ -30,7 +27,8 @@ namespace ConcurrencyTester
         private long _sumActualSendTime;
         private ResourceUtility _resourceManager;
 
-        public DigipostAsync(int numberOfRequests, int defaultConnectionLimit)
+        public DigipostAsync(int numberOfRequests, int defaultConnectionLimit, ClientConfig clientconfig, string thumbprint) : 
+            base(clientconfig, thumbprint)
         {
             _resourceManager = new ResourceUtility("ConcurrencyTester.Resources");
             _itemsLeft = numberOfRequests;
@@ -38,16 +36,13 @@ namespace ConcurrencyTester
             _defaultConnectionLimit = defaultConnectionLimit;
         }
 
-        public void TestAsync()
+        public override void Run()
         {
-            var config = new ClientConfig(SenderId) {ApiUrl = new Uri("https://qa2.api.digipost.no")};
-            var api = new DigipostClient(config, Thumbprint);
             ServicePointManager.DefaultConnectionLimit = _defaultConnectionLimit;
 
             for (var i = 0; i < _numberOfRequests; i++)
             {
-                SendMessageToPerson(api);
-                
+                SendMessageToPerson(Client);
             }
         }
 
@@ -55,8 +50,8 @@ namespace ConcurrencyTester
         {
             _stopwatch.Stop();
 
-            double performanceAllWork = _successfulCalls / (_stopwatch.ElapsedMilliseconds/1000d);
-            double performanceRequests = _successfulCalls/(_sumActualSendTime/1000d);
+            var performanceAllWork = _successfulCalls / (_stopwatch.ElapsedMilliseconds/1000d);
+            var performanceRequests = _successfulCalls/(_sumActualSendTime/1000d);
 
             Console.WriteLine(
                 "Success:" + _successfulCalls + ", " +
